@@ -1,67 +1,72 @@
 # Frontend Test – QuestionCard
 
-## Part 1. Componemt Architecture
-QuestionCardContainer
-    Header (номер, таймер, режим demo)
-    QuestionRenderer
-        Fallback (если TipTap/KaTeX упали)
-    AnswerOptions
-        AnswerOptionItem
-            type: "single" | "multiple"
-            control: radio | checkbox
-    ActionBar
-        PrimaryAction
-            CheckAnswerButton
-            NextQuestionButton
-        SecondaryAction
-            RetryButton (при ошибке)
-        StatusLine
-            LoadingIndicator
-            ErrorMessage
-    ExplanationBlock (conditional)
-        ExplanationContent
-        DemoOverlay (blur + CTA)
+## Part 1. Component Architecture
 
+- **QuestionCardContainer**
+  - **Header** (номер, таймер, режим demo)
+  - **QuestionRenderer**
+    - Fallback (если TipTap/KaTeX упали)
+  - **AnswerOptions**
+    - AnswerOptionItem
+      - type: `single` | `multiple`
+      - control: `radio` | `checkbox`
+  - **ActionBar**
+    - PrimaryAction
+      - CheckAnswerButton
+      - NextQuestionButton
+    - SecondaryAction
+      - RetryButton (при ошибке)
+    - StatusLine
+      - LoadingIndicator
+      - ErrorMessage
+  - **ExplanationBlock** (conditional)
+    - ExplanationContent
+    - DemoOverlay (blur + CTA)
 
-Глобально хранятся 
-    1. данные вопроса (stem TipTap JSON, options, правильный ответ если приходит, explanation, флаги demo).
-    2. loading/error для запроса вопроса.
-    3.  userMode (demo или заплатил)
+### State
 
-Локально внутри QuestionCard:
-    1. selectedAnswerIds. Выбранные пользователем варианты ответа.
-    2. isChecked. Флаг, что пользователь нажал “Проверить ответ” и получил результат.
-    3. isChecking
-    4. checkResult
-    5. isCorrect
-    6. checkerror
-    7. renderError. Используется для показа fallback UI без краша всей карточки.
+**Глобально хранятся:**
+1. данные вопроса (stem TipTap JSON, options, правильный ответ если приходит, explanation, флаги demo)
+2. loading/error для запроса вопроса
+3. userMode (demo или заплатил)
 
+**Локально внутри QuestionCard:**
+1. selectedAnswerIds — выбранные пользователем варианты ответа
+2. isChecked — пользователь нажал “Проверить ответ” и получил результат
+3. isChecking
+4. checkResult
+5. isCorrect
+6. checkError
+7. renderError — показать fallback UI без краша всей карточки
 
-Где хранится selectedAnswer:
-    Локально в QuestionCard.
+**Где хранится selectedAnswer:** локально в QuestionCard  
+**Где хранится isChecked:** локально в QuestionCard
 
-Где хранится isChecked:
-    Локально в QuestionCard.
+### Что сбрасывается при смене questionId:
 
-Что сбрасывается при смене questionId:
-    selectedAnswerId = null
-    isChecked = false
-    checkResult = null
-    isChecking = false
-    renderError, checkError
+- selectedAnswerIds = empty Set
+- isChecked = false
+- checkResult = null
+- isChecking = false
+- renderError = null
+- checkError = null
 
-Что будет, если пользователь кликает очень быстро (и API иногда косячит):
-    Проблема 1: гонка ответов (ответ от старого questionId прилетел позже и перезаписал state).
-    Решение: принимать результат только если token === activeRequestToken(локальный счётчик актуальности) и questionId тот же.
+### Что будет, если пользователь кликает очень быстро:
 
-    Проблема 2: двойной check (многократные клики по кнопке).
-    Решение: isChecking=true то кнопки disabled.
+**Проблема 1: гонка ответов**  
+Ответ от старого questionId прилетел позже и перезаписал state.  
+**Решение:** принимать результат только если `token === activeRequestToken` и `questionId` тот же.
 
-    Проблема 3: API вернул ошибку.
-    Решение: показать inline error + дать “Повторить проверку”, не показывать explanation до успешного check.
+**Проблема 2: двойной check**  
+Многократные клики по кнопке.  
+**Решение:** `isChecking=true` → кнопки disabled.
+
+**Проблема 3: API вернул ошибку**  
+**Решение:** показать inline error + “Повторить проверку”, не показывать explanation до успешного check.
 
 ## Part 2. Pseudocode Logic
+
+```js
 state:
   selectedAnswerIds: Set<string>
   isChecked: boolean
@@ -69,11 +74,9 @@ state:
   checkResult: { isCorrect: boolean, explanation?: TipTapJson } | null
   checkError: string | null
 
-  activeToken: number //токен последнего актуального запроса
+  activeToken: number // токен последнего актуального запроса
   demoMode: boolean
-  question: {
-    id, stemJson, options[], ...
-  }
+  question: { id, stemJson, options[], ... }
 
 derived state:
     hasSelection = selectedAnswerIds.size > 0
@@ -167,6 +170,8 @@ ActionBar:
     if (isChecked):
     render NextQuestionButton
 
+```
+
 ## Part 3. Edge Cases & UX
 1) Explanation отсутствует
         После Check Answer показываем результат как обычно.
@@ -214,4 +219,5 @@ ActionBar:
 
     CTA на оплату (обязателен):
         Кнопка: "Открыть доступ" или "Перейти к оплате"
+
 
